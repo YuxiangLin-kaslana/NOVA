@@ -1,0 +1,41 @@
+# ===== 密钥(绝不入库)=====
+.env
+*.key
+*.pem
+
+# ===== Python 缓存 =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# ===== 大型数据集 / 第三方仓库(公开,可另行下载)=====
+data/
+CANDI/
+specific_data/**/streams/
+*.npz
+*.pkl
+
+# ===== 模型 checkpoint / 训练产物 =====
+code/runs/
+**/*.pt
+**/*.pth
+**/checkpoint_*
+
+# ===== 实验追踪 / 日志 =====
+**/wandb/
+*.out
+*.err
+*.log
+slurm-*.out
+
+# ===== 大字体(16MB,见 scripts/assets/README.md 下载)=====
+scripts/assets/*.otf
+scripts/assets/*.ttf
+scripts/assets/*.ttc
+
+# ===== 二进制幻灯片(源在 SigLA_slide_report.md)=====
+*.pptx
+
+# ===== 系统垃圾 =====
+.DS_Store

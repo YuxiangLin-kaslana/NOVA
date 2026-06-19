@@ -1,0 +1,63 @@
+#!/bin/bash
+# Set up the conda environment for the minimal SigLA experiment code.
+#
+# This keeps the environment and conda package cache out of /u/ylin30,
+# because the home quota is too small for PyTorch CUDA packages.
+#
+# Usage:
+#   /u/ylin30/sigLA/setup_sigLA
+#   CONDA_ENV_NAME=sigla-a100 /u/ylin30/sigLA/setup_sigLA
+
+set -euo pipefail
+
+ENV_NAME="${CONDA_ENV_NAME:-sigla}"
+CONDA_BASE="${CONDA_BASE:-/sw/external/python/anaconda3}"
+ENV_PREFIX="${CONDA_ENV_PREFIX:-/projects/bflz/ylin30/conda_envs/${ENV_NAME}}"
+PKGS_DIR="${CONDA_PKGS_DIRS:-/projects/bflz/ylin30/conda_pkgs}"
+
+if [[ ! -f "${CONDA_BASE}/etc/profile.d/conda.sh" ]]; then
+  echo "Cannot find conda.sh under ${CONDA_BASE}" >&2
+  exit 1
+fi
+
+source "${CONDA_BASE}/etc/profile.d/conda.sh"
+
+if [[ -n "${VIRTUAL_ENV:-}" ]]; then
+  deactivate 2>/dev/null || true
+fi
+
+mkdir -p "$(dirname "${ENV_PREFIX}")" "${PKGS_DIR}"
+export CONDA_PKGS_DIRS="${PKGS_DIR}"
+export PYTHONNOUSERSITE=1
+
+if [[ -d "${ENV_PREFIX}/conda-meta" ]]; then
+  echo "Conda environment already exists at ${ENV_PREFIX}."
+else
+  conda create -y -p "${ENV_PREFIX}" python=3.9 pip
+fi
+
+conda install -y -p "${ENV_PREFIX}" numpy pandas scikit-learn
+conda install -y -p "${ENV_PREFIX}" -c pytorch -c nvidia pytorch pytorch-cuda=12.1
+
+PYTHON="${ENV_PREFIX}/bin/python"
+
+"${PYTHON}" - <<'PY'
+import sys
+import numpy
+import pandas
+import sklearn
+
+print("python environment is ready")
+print("python", sys.executable)
+print("numpy", numpy.__version__)
+print("pandas", pandas.__version__)
+print("sklearn", sklearn.__version__)
+PY
+
+echo "torch packages:"
+conda list -p "${ENV_PREFIX}" | awk '/^(pytorch|pytorch-cuda)[[:space:]]/ {print}'
+echo "CUDA availability is checked inside the Slurm job on the A100 node."
+
+echo
+echo "Activate with:"
+echo "  conda activate ${ENV_PREFIX}"

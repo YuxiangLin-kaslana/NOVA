@@ -49,6 +49,18 @@ KNOWN_SIG = {"spike": "max_abs_zscore", "level_shift": "max_step_change",
              "trend": "max_linear_slope"}
 
 
+def output_path(default_name):
+    explicit = os.environ.get("CMP_OUTPUT_JSON")
+    if explicit:
+        p = Path(explicit)
+        return p if p.is_absolute() else ROOT / p
+    tag = os.environ.get("CMP_RUN_TAG", "").strip()
+    if tag:
+        stem, suffix = Path(default_name).stem, Path(default_name).suffix
+        return ROOT / "runs" / f"{stem}_{tag}{suffix}"
+    return ROOT / "runs" / default_name
+
+
 def make_detector(n_out):
     return CNNConceptDetector(WIN, NVARS, n_concepts=n_out, kernel_size=7).to(device)
 
@@ -265,7 +277,7 @@ def main():
         m, sd = agg(k); out[k] = {"mean": m, "std": sd}
     out["nov_curve"] = {"mean": [float(v) for v in nov_m], "std": [float(v) for v in nov_s]}
     out["llm_curve"] = {"mean": [float(v) for v in llm_m], "std": [float(v) for v in llm_s]}
-    json.dump(out, open(ROOT / "runs" / "openvocab_loop_result.json", "w"), indent=2)
+    json.dump(out, open(output_path("openvocab_loop_result.json"), "w"), indent=2)
 
 
 if __name__ == "__main__":

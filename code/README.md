@@ -1,7 +1,7 @@
-# Minimal SigLA Experiment Code
+# NOVA Experiment Code
 
-This directory contains a small PyTorch implementation for early experiments
-around the SigLA paper draft and the CANDI codebase.
+This directory contains the core PyTorch implementation and paper experiment
+runners for NOVA/SigLA open-vocabulary anomaly learning.
 
 The code keeps the paper structure but makes it runnable:
 
@@ -20,10 +20,16 @@ The code keeps the paper structure but makes it runnable:
 - `sigla_exp/model/`: current detector, concept extractor, policy, and fallback components.
 - `sigla_exp/train/`: training entry point and framework training logic.
 - `sigla_exp/train.py`: compatibility wrapper for the training entry point.
+- `sigla_exp/longtail_bench.py`: many-type compositional benchmark generation.
+- `sigla_exp/prequential_memory.py`: online prototype memory and guarded reuse.
+- `sota_compare/`: paper comparisons, ablations, robustness checks, and collectors.
+- `sigla_pipeline/`: profile construction and end-to-end pipeline entry points.
+- `policy/`: cost-aware inspection and learned-policy experiments.
+- `tests/`: deterministic memory and protocol tests.
 
 ## Quick Smoke Tests
 
-Run from `/u/ylin30/sigLA/code`:
+Run from the repository's `code/` directory:
 
 ```bash
 python -m sigla_exp.train --dataset synthetic --task detector --epochs 2 --limit_batches 3

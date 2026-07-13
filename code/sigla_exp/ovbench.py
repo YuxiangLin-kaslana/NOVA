@@ -172,6 +172,9 @@ def normal_stats(rng, n=400):
     return mu, sd
 
 
+_GPT_CACHE = {}                                              # (model, z-tuple) -> 概念名/None;纯加速,跨调用复用
+
+
 def gpt_recognize_top1(ev, key, mu, sd=None, model="gpt-4o-mini"):
     """返回**单个**最可能的概念名(或 None / "__ERROR__")。强制 top-1 → 杜绝过度列举。
     给 LLM 的是每个统计量**对正常基线的 z-score(偏离几个标准差)**而非原始值——gpt-4o-mini 不擅长原始数值
@@ -179,6 +182,9 @@ def gpt_recognize_top1(ev, key, mu, sd=None, model="gpt-4o-mini"):
     if sd is None:
         sd = {k: 1.0 for k in mu}
     z = {k: round((ev[k] - mu[k]) / (sd[k] + 1e-9), 1) for k in mu}
+    ckey = (model, tuple(sorted(z.items())))                  # 纯加速:z 已四舍五入到 1 位,良性窗高命中
+    if ckey in _GPT_CACHE:                                    # 缓存命中 → 跳过网络往返(不改数值)
+        return _GPT_CACHE[ckey]
     instr = (
         "You name the SINGLE most likely time-series anomaly concept in a window. You are given, for each "
         "generic statistic, its DEVIATION FROM NORMAL in standard deviations (z-score): large positive z "
@@ -195,20 +201,22 @@ def gpt_recognize_top1(ev, key, mu, sd=None, model="gpt-4o-mini"):
     payload = {"model": model, "instructions": instr,
                "input": [{"role": "user", "content": "z-scores: " + json.dumps(z)}],
                "max_output_tokens": 200}
-    for _ in range(3):
+    for _ in range(2):                                        # 重试 3→2,timeout 30→8s(失败更快返回)
         try:
             req = urllib.request.Request("https://api.openai.com/v1/responses",
                                          data=json.dumps(payload).encode(),
                                          headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                                          method="POST")
-            with urllib.request.urlopen(req, timeout=30) as r:
+            with urllib.request.urlopen(req, timeout=8) as r:
                 data = json.loads(r.read().decode())
             txt = data.get("output_text")
             if not isinstance(txt, str):
                 txt = "\n".join(c.get("text", "") for it in data.get("output", []) for c in it.get("content", []))
             s, e = txt.find("{"), txt.rfind("}")
             c = json.loads(txt[s:e + 1]).get("concept")
-            return c if c in CONCEPTS else None
+            res = c if c in CONCEPTS else None
+            _GPT_CACHE[ckey] = res                            # 仅缓存成功结果(含 None);__ERROR__ 不缓存
+            return res
         except Exception:
             continue
     return "__ERROR__"

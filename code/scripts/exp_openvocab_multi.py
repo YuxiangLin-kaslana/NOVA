@@ -105,6 +105,18 @@ N_WARM, SEG = 150, 200
 NSEED = int(os.environ.get("OVM_NSEED", "5"))
 
 
+def output_path(default_name):
+    explicit = os.environ.get("CMP_OUTPUT_JSON")
+    if explicit:
+        p = Path(explicit)
+        return p if p.is_absolute() else ROOT / p
+    tag = os.environ.get("CMP_RUN_TAG", "").strip()
+    if tag:
+        stem, suffix = Path(default_name).stem, Path(default_name).suffix
+        return ROOT / "runs" / f"{stem}_{tag}{suffix}"
+    return ROOT / "runs" / default_name
+
+
 def run_seed(seed, key, net_ok):
     rng = np.random.default_rng(seed)
     torch.manual_seed(seed)
@@ -244,7 +256,7 @@ def main():
                llm_overall=dict(zip(("mean", "std"), ms([r["llm_overall"] for r in res]))),
                per_novel=agg_novel, llm_curve_mean=[float(v) for v in llm_curve_m],
                vocab_curve_mean=[float(v) for v in voc_curve_m], per_seed=res)
-    json.dump(out, open(ROOT / "runs" / "openvocab_multi_result.json", "w"), indent=2)
+    json.dump(out, open(output_path("openvocab_multi_result.json"), "w"), indent=2)
 
 
 if __name__ == "__main__":
